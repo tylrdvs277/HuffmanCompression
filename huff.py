@@ -13,26 +13,32 @@ def main():
 def huffman_encode():
     in_file = get_file()
     freqs = cnt_freq(in_file)
-    root = create_huff_tree(freqs)
-    codes = root.get_tree_codes()
-    bits = get_bits(in_file, codes)
-    group_bits = group_by(bits)
-    padded_bits = pad_bits(group_bits)
-    byte_list = [int(bit, 2) for bit in padded_bits]
-    header = root.tree_preord()
     out_file = input("Enter the output file: ")
-    write_encoded_file(header, byte_list, out_file) 
+    if len(freqs) == 0:
+        open(out_file, "w")
+    else:
+        root = create_huff_tree(freqs)
+        codes = root.get_tree_codes()
+        bits = get_bits(in_file, codes)
+        group_bits = group_by(bits)
+        padded_bits = pad_bits(group_bits)
+        byte_list = [int(bit, 2) for bit in padded_bits]
+        header = root.tree_preord()
+        write_encoded_file(header, byte_list, out_file) 
 
 def huffman_decode():
     in_file = get_file()
     data = open(in_file, "rb").readlines()
-    (header, byte_list) = split_header(data)
-    bit_str = make_bit_str(byte_list)
-    root = tree_from_header(header)
-    codes = root.get_tree_codes()
-    translate_codes = invert(codes)
     out_file = input("Enter the output file: ")
-    write_decoded_file(bit_str, translate_codes, out_file)
+    if len(data) == 0:
+        open(out_file, "w")
+    else:
+        (header, byte_list) = split_header(data)
+        bit_str = make_bit_str(byte_list)
+        root = tree_from_header(header)
+        codes = root.get_tree_codes()
+        translate_codes = invert(codes)
+        write_decoded_file(bit_str, translate_codes, out_file)
 
 def get_file():
     filename = input("Enter the input file: ")
@@ -51,9 +57,12 @@ def cnt_freq(filename):
             char_code = ord(char)
             if char_code not in count:
                 count[char_code] = 1
+                last = char_code
             else:
                 count[char_code] += 1
     in_file.close()
+    if len(count) == 1 and ord("\n") in count:
+        count = {}
     return count
 
 def create_huff_tree(freqs):
@@ -68,7 +77,9 @@ def create_huff_tree(freqs):
                               node1.occur + node2.occur, node1, node2)
         node1.parent = node2.parent = newnode
         list_nodes = newnode.insert_sorted(list_nodes)
-    return list_nodes.pop()
+    if len(list_nodes) == 1:
+        return list_nodes.pop()
+    return HuffmanNode()
 
 def get_bits(filename, codes):
     in_file = open(filename, "r")
@@ -179,6 +190,7 @@ def write_decoded_file(bits, codes, filename):
                 out.write(codes[temp])
                 temp = ""
 
+
 class HuffmanNode:
 
     def __init__(self, char = None, occur = None, left = None, right = None, parent = None):
@@ -214,15 +226,15 @@ class HuffmanNode:
         done = False
         while not done:
             checked.append(current)
-            if current.has_no_children():
+            if current != self and current.has_no_children():
                 codes[current.char] = "".join(path)
                 current = current.parent
                 path.pop()
             else:
-                if current.left not in checked:
+                if current.left and current.left not in checked:
                     current = current.left
                     path.append("0")
-                elif current.right not in checked:
+                elif current.right and current.right not in checked:
                     current = current.right
                     path.append("1")
                 else:
@@ -240,14 +252,14 @@ class HuffmanNode:
         done = False
         while not done:
             checked.append(current)
-            if current.has_no_children():
+            if current != self and current.has_no_children():
                 header += "1" + chr(current.char)
                 current = current.parent
             else:
-                if current.left not in checked:
+                if current.left and current.left not in checked:
                     current = current.left
                     header += "0"
-                elif current.right not in checked:
+                elif current.right and current.right not in checked:
                     current = current.right
                 else:
                     if current.parent:
